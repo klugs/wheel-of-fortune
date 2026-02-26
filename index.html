@@ -33,116 +33,123 @@
 <div id="res"></div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwfKR2Mt2yRT6e1fd1SbbOvYfsrf1LMIIfvYLxKeKB4z6xKTVZJLW7dR5qwwkWROWM/exec";
-    let prizes = [];
-    let currentRotation = 0;
-    let isSpinning = false;
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyKKp_18zIinIp14Zn85a__nyXyvPJ67QMZY0yu1UW2aL9Hn587twtoDf8l3jlBvPM/exec";
+// 1. Дефолтные призы (пока грузятся основные)
+let prizes = [
+    { label: "Загрузка...", weight: 1, color: "#333" },
+    { label: "...", weight: 1, color: "#444" },
+    { label: "Загрузка...", weight: 1, color: "#333" },
+    { label: "...", weight: 1, color: "#444" }
+];
+let currentRotation = 0;
 
-    const canvas = document.getElementById('wheel');
-    const ctx = canvas.getContext('2d');
-    const spinBtn = document.getElementById('spin-btn');
-    const resDiv = document.getElementById('res');
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+const spinBtn = document.getElementById('spin-btn');
 
-    // 1. ПОДГРУЗКА ПРИЗОВ ПРИ СТАРТЕ
-    window.onload = async () => {
-        try {
-            const resp = await fetch(GAS_URL);
-            prizes = await resp.json();
-            drawWheel();
-        } catch (e) {
-            alert("Ошибка загрузки призов");
+// Рисуем сразу при загрузке страницы
+window.onload = () => {
+    drawWheel(); // Нарисует серые сектора "Загрузка"
+    loadActualPrizes(); // Начнет качать реальные данные
+};
+
+async function loadActualPrizes() {
+    try {
+        const resp = await fetch(GAS_URL);
+        const data = await resp.json();
+        if (data.length > 0) {
+            prizes = data;
+            drawWheel(); // Перерисует колесо в нормальные цвета
         }
-    };
+    } catch (e) {
+        console.error("Не удалось подгрузить призы, используем дефолт");
+    }
+}
 
-    function drawWheel() {
-        const slice = 360 / prizes.length;
-        ctx.clearRect(0,0,600,600);
-        prizes.forEach((p, i) => {
-            ctx.beginPath();
-            ctx.fillStyle = p.color || "#333";
-            ctx.moveTo(300, 300);
-            ctx.arc(300, 300, 300, (i * slice) * Math.PI/180, ((i+1) * slice) * Math.PI/180);
-            ctx.fill();
-            ctx.save();
-            ctx.translate(300, 300);
-            ctx.rotate((i * slice + slice/2) * Math.PI/180);
-            ctx.fillStyle = "#fff"; ctx.font = "bold 22px Arial"; ctx.textAlign = "right";
-            ctx.fillText(p.label, 280, 10);
-            ctx.restore();
+function drawWheel() {
+    const slice = 360 / prizes.length;
+    ctx.clearRect(0,0,600,600);
+    prizes.forEach((p, i) => {
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.moveTo(300, 300);
+        ctx.arc(300, 300, 300, (i * slice) * Math.PI/180, ((i+1) * slice) * Math.PI/180);
+        ctx.fill();
+        ctx.save();
+        ctx.translate(300, 300);
+        ctx.rotate((i * slice + slice/2) * Math.PI/180);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "right";
+        ctx.fillText(p.label, 280, 10);
+        ctx.restore();
+    });
+}
+
+spinBtn.onclick = async () => {
+    const rawPhone = document.getElementById('phone').value;
+    if (rawPhone.replace(/\D/g, '').length < 10) return alert("Введите корректный номер");
+
+    spinBtn.disabled = true;
+
+    // МГНОВЕННО запускаем медленное вращение (для фидбека)
+    let preRollAngle = currentRotation;
+    const preRoll = setInterval(() => {
+        preRollAngle += 2;
+        canvas.style.transform = `rotate(${preRollAngle}deg)`;
+        currentRotation = preRollAngle;
+    }, 16);
+
+    try {
+        const tgData = window.Telegram.WebApp.initDataUnsafe;
+        const resp = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+                phone: rawPhone, 
+                chat_id: tgData.user?.id || null 
+            })
         });
-    }
+        const result = await resp.json();
 
-    // Функция плавной анимации
-    function animateRotation(targetDeg, duration, callback) {
-        const start = performance.now();
-        const startRotation = currentRotation;
-        const diff = targetDeg - startRotation;
+        clearInterval(preRoll); // Останавливаем "ожидающее" вращение
 
-        function step(now) {
-            const elapsed = now - start;
-            const progress = Math.min(elapsed / duration, 1);
-            // Ease-out cubic
-            const ease = 1 - Math.pow(1 - progress, 3);
-            
-            currentRotation = startRotation + (diff * ease);
-            canvas.style.transform = `rotate(${currentRotation}deg)`;
-
-            if (progress < 1) {
-                requestAnimationFrame(step);
-            } else if (callback) {
-                callback();
-            }
-        }
-        requestAnimationFrame(step);
-    }
-
-    spinBtn.onclick = async () => {
-        const phoneInput = document.getElementById('phone').value;
-        if (phoneInput.length < 10) return alert("Введите телефон");
-
-        spinBtn.disabled = true;
-        
-        // МГНОВЕННЫЙ ЗАПУСК: начинаем медленно вращать (pre-roll)
-        let preRollAngle = currentRotation;
-        const preRollInterval = setInterval(() => {
-            preRollAngle += 2;
-            canvas.style.transform = `rotate(${preRollAngle}deg)`;
-            currentRotation = preRollAngle;
-        }, 16);
-
-        try {
-            const tgData = window.Telegram.WebApp.initDataUnsafe;
-            const resp = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ phone: phoneInput, chat_id: tgData.user?.id || null })
-            });
-            const data = await resp.json();
-
-            clearInterval(preRollInterval); // Останавливаем фоновое вращение
-
-            if (data.error) {
-                alert("Вы уже участвовали!");
-                spinBtn.disabled = false;
-                return;
-            }
-
-            // РАСЧЕТ ФИНАЛЬНОЙ ТОЧКИ
-            const slice = 360 / prizes.length;
-            const extraSpins = 360 * 4; // 4 полных круга
-            const stopAt = (360 - (data.index * slice)) - (slice / 2) + 270;
-            const finalTarget = currentRotation + extraSpins + (stopAt - (currentRotation % 360));
-
-            animateRotation(finalTarget, 4000, () => {
-                resDiv.innerHTML = `ПОЗДРАВЛЯЕМ!<br>Ваш приз: ${data.label}`;
-                document.getElementById('ui-block').style.display = 'none';
-            });
-
-        } catch (e) {
-            clearInterval(preRollInterval);
-            alert("Ошибка сервера");
+        if (result.error === "already_played") {
+            alert("Вы уже участвовали!");
             spinBtn.disabled = false;
+            return;
         }
-    };
+        
+        if (result.error) {
+            alert("Ошибка: " + result.error);
+            spinBtn.disabled = false;
+            return;
+        }
+
+        // РАСЧЕТ ФИНАЛЬНОЙ ТОЧКИ (4 полных круга + нужный сектор)
+        const slice = 360 / prizes.length;
+        const extraSpins = 360 * 4;
+        const stopAt = (360 - (result.index * slice)) - (slice / 2) + 270;
+        const finalTarget = currentRotation + extraSpins + (stopAt - (currentRotation % 360));
+
+        // Плавная анимация через CSS
+        canvas.style.transition = "transform 4s cubic-bezier(0.15, 0, 0.15, 1)";
+        canvas.style.transform = `rotate(${finalTarget}deg)`;
+        currentRotation = finalTarget;
+
+        setTimeout(() => {
+            document.getElementById('res').innerHTML = `<b>УРА! ВАШ ПРИЗ:</b><br>${result.label}`;
+            document.getElementById('ui-block').style.display = 'none';
+            if (window.Telegram.WebApp.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+        }, 4500);
+
+    } catch (e) {
+        clearInterval(preRoll);
+        alert("Ошибка сервера. Проверьте соединение.");
+        spinBtn.disabled = false;
+    }
+};
 </script>
 </body>
 </html>
