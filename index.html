@@ -18,9 +18,13 @@
         body {
             font-family: 'Montserrat', sans-serif;
             background: var(--bg);
+            /* ФОНОВЫЕ ИЗОБРАЖЕНИЯ (Листики и блестки) */
             background-image: 
-                radial-gradient(circle at 10% 20%, rgba(166, 124, 109, 0.05) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.05) 0%, transparent 20%);
+                url('https://www.transparentpng.com/download/leaves/green-leaves-transparent-background-3.png'), /* Левый нижний угол */
+                url('https://www.transparentpng.com/download/glitter/gold-glitter-dust-transparent-background-15.png'); /* Правый верхний угол */
+            background-position: left bottom, right top;
+            background-repeat: no-repeat, no-repeat;
+            background-size: 150px auto, 200px auto;
             color: var(--text);
             display: flex;
             flex-direction: column;
@@ -29,16 +33,6 @@
             min-height: 100vh;
             overflow: hidden;
         }
-
-        /* Декоративные элементы (листики/кружочки) */
-        .decor {
-            position: fixed;
-            pointer-events: none;
-            z-index: 0;
-            opacity: 0.4;
-        }
-        .decor-1 { top: -20px; right: -20px; width: 150px; transform: rotate(15deg); }
-        .decor-2 { bottom: 20px; left: -30px; width: 120px; opacity: 0.3; }
 
         /* Экран загрузки */
         #loading-screen {
@@ -50,19 +44,19 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.8s ease;
+            transition: opacity 0.6s ease;
         }
 
         .loader-logo {
             width: 180px;
-            height: auto; /* Исправление пропорций */
+            height: auto;
             max-height: 180px;
             object-fit: contain;
             animation: pulse 2s infinite ease-in-out;
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.9; }
+            0%, 100% { transform: scale(1); opacity: 0.8; }
             50% { transform: scale(1.05); opacity: 1; }
         }
 
@@ -75,9 +69,9 @@
         }
 
         .logo { 
-            width: 70px; 
+            width: 80px; 
             height: auto; 
-            max-height: 70px; 
+            max-height: 80px; 
             object-fit: contain; 
             margin-bottom: 5px; 
         }
@@ -100,8 +94,8 @@
         /* Колесо */
         .wheel-container {
             position: relative;
-            width: 300px;
-            height: 300px;
+            width: 310px;
+            height: 310px;
             margin-bottom: 25px;
             z-index: 1;
         }
@@ -110,8 +104,9 @@
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: 6px solid #fff;
-            box-shadow: 0 8px 20px rgba(166, 124, 109, 0.2);
+            border: 8px solid #fff;
+            box-shadow: 0 10px 25px rgba(166, 124, 109, 0.25);
+            transition: transform 0s;
         }
 
         .pointer {
@@ -119,28 +114,30 @@
             top: -12px;
             left: 50%;
             transform: translateX(-50%);
-            width: 30px;
-            height: 40px;
+            width: 32px;
+            height: 42px;
             background: var(--primary-dark);
             clip-path: polygon(50% 100%, 0 0, 100% 0);
             z-index: 10;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
 
         /* Форма */
-        .ui { width: 85%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; z-index: 1; }
+        .ui { width: 85%; max-width: 310px; display: flex; flex-direction: column; gap: 12px; z-index: 1; }
         
         input {
-            padding: 14px;
+            padding: 15px;
             border-radius: 25px;
             border: 1px solid #e0d7d3;
             background: rgba(255, 255, 255, 0.9);
             font-size: 16px;
             text-align: center;
             outline: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
 
         button {
-            padding: 14px;
+            padding: 15px;
             border-radius: 25px;
             border: none;
             background: var(--primary-dark);
@@ -148,33 +145,47 @@
             font-weight: 600;
             font-size: 16px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(142, 94, 78, 0.25);
+            box-shadow: 0 4px 15px rgba(142, 94, 78, 0.3);
+            transition: all 0.2s;
         }
+
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
 
         #result {
             margin-top: 15px;
             text-align: center;
-            font-size: 18px;
+            font-size: 19px;
             font-weight: 600;
             color: var(--primary-dark);
             padding: 0 20px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Эффект конфетти */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            opacity: 0.8;
+            border-radius: 50%;
+            animation: confetti-fall 4s ease-out infinite;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
         }
     </style>
 </head>
 <body>
 
-<svg class="decor decor-1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#a67c6d" d="M30,50 Q40,10 80,30 Q90,60 50,80 Q10,70 30,50" opacity="0.2"/>
-    <circle cx="20" cy="20" r="5" fill="#d4af37" opacity="0.3"/>
-</svg>
-<svg class="decor decor-2" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#d4af37" d="M20,40 Q50,0 80,40 Q50,90 10,50" opacity="0.1"/>
-    <circle cx="70" cy="80" r="8" fill="#a67c6d" opacity="0.2"/>
-</svg>
-
 <div id="loading-screen">
     <img src="logo_b.png" class="loader-logo" alt="Загрузка...">
-    <p style="font-family: 'Cormorant Garamond'; color: var(--primary-dark); margin-top: 20px;">Загружаем весеннее настроение...</p>
+    <p style="font-family: 'Cormorant Garamond'; color: var(--primary-dark); margin-top: 20px; font-size: 18px;">Загружаем весеннее настроение...</p>
 </div>
 
 <div class="header">
@@ -198,7 +209,12 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz80QMGH34JsU_fZw8Vofs7eeyGR1eE3i9tB5NyD84xI7eiC1Z6SSMq55-Su5Z8QoI/exec";
     const tg = window.Telegram.WebApp;
     
-    let prizes = [];
+    // Заглушки, чтобы колесо нарисовалось мгновенно
+    let prizes = [
+        {label: "Подарок", color: "#a67c6d"}, {label: "Бонус", color: "#d4af37"},
+        {label: "Сюрприз", color: "#8e5e4e"}, {label: "Скидка", color: "#a67c6d"}
+    ];
+    
     let currentRotation = 0;
     const canvas = document.getElementById('wheel');
     const ctx = canvas.getContext('2d');
@@ -207,29 +223,38 @@
     tg.ready();
     tg.expand();
 
-    // Функция определения контрастного цвета текста
     function getContrastColor(hexcolor) {
         if (!hexcolor) return '#ffffff';
         const r = parseInt(hexcolor.substr(1,2), 16);
         const g = parseInt(hexcolor.substr(3,2), 16);
         const b = parseInt(hexcolor.substr(5,2), 16);
         const yiq = ((r*299) + (g*587) + (b*114)) / 1000;
-        return (yiq >= 140) ? '#2c2c2c' : '#ffffff';
+        return (yiq >= 145) ? '#2c2c2c' : '#ffffff';
     }
 
     async function loadData() {
+        // Отрисовываем заглушки сразу
+        draw();
         try {
             const r = await fetch(GAS_URL);
-            prizes = await r.json();
-            draw();
+            const data = await r.json();
+            if (data.length > 0) {
+                prizes = data;
+                draw(); // Перерисовываем с реальными данными
+            }
+            
             setTimeout(() => {
                 document.getElementById('loading-screen').style.opacity = '0';
-                setTimeout(() => document.getElementById('loading-screen').remove(), 500);
-            }, 1000);
+                setTimeout(() => document.getElementById('loading-screen').remove(), 600);
+            }, 800);
+            
             spinBtn.disabled = false;
             spinBtn.innerText = "ИСПЫТАТЬ УДАЧУ";
         } catch(e) { 
-            alert("Ошибка загрузки. Проверьте соединение."); 
+            console.error("Ошибка загрузки:", e);
+            document.getElementById('loading-screen').remove();
+            spinBtn.disabled = false;
+            spinBtn.innerText = "ИСПЫТАТЬ УДАЧУ";
         }
     }
 
@@ -241,41 +266,53 @@
             const endAngle = ((i + 1) * slice) * Math.PI/180;
             
             ctx.beginPath();
-            ctx.fillStyle = p.color;
+            ctx.fillStyle = p.color || "#a67c6d";
             ctx.moveTo(300, 300);
             ctx.arc(300, 300, 300, startAngle, endAngle);
             ctx.fill();
 
-            // Текст
             ctx.save();
             ctx.translate(300, 300);
             ctx.rotate(startAngle + (endAngle - startAngle)/2);
             ctx.fillStyle = getContrastColor(p.color);
             ctx.font = "bold 22px Montserrat";
             ctx.textAlign = "right";
-            ctx.fillText(p.label, 270, 10);
+            ctx.fillText(p.label, 275, 10);
             ctx.restore();
         });
     }
 
+    // Функция для создания эффекта конфетти
+    function startConfetti() {
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.classList.add('confetti');
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.animationDelay = Math.random() * 2 + 's';
+            confetti.style.backgroundColor = i % 2 === 0 ? 'var(--accent)' : 'var(--primary)';
+            document.body.appendChild(confetti);
+            setTimeout(() => confetti.remove(), 4000); // Удаляем через 4 секунды
+        }
+    }
+
     spinBtn.onclick = async () => {
-        const phone = document.getElementById('phone').value.replace(/\D/g, '');
-        if (phone.length < 10) return alert("Пожалуйста, введите корректный номер телефона.");
+        let phoneInput = document.getElementById('phone').value.replace(/\D/g, '');
+        if (phoneInput.length < 10) return alert("Введите корректный номер телефона.");
 
         spinBtn.disabled = true;
 
-        // Предварительное вращение
-        let preRoll = currentRotation;
+        // МГНОВЕННОЕ начало вращения (эффект разгона)
+        let preRollSpeed = 2;
         const interval = setInterval(() => {
-            preRoll += 2;
-            canvas.style.transform = `rotate(${preRoll}deg)`;
-            currentRotation = preRoll;
+            currentRotation += preRollSpeed;
+            if (preRollSpeed < 12) preRollSpeed += 0.2; 
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
         }, 16);
 
         try {
             const resp = await fetch(GAS_URL, {
                 method: "POST",
-                body: JSON.stringify({ phone, chat_id: tg.initDataUnsafe?.user?.id || null })
+                body: JSON.stringify({ phone: phoneInput, chat_id: tg.initDataUnsafe?.user?.id || null })
             });
             const data = await resp.json();
             clearInterval(interval);
@@ -296,8 +333,9 @@
             currentRotation = final;
 
             setTimeout(() => {
-                document.getElementById('result').innerHTML = `🎊 Поздравляем! 🎊<br>Ваш приз: <b>${data.label}</b>`;
+                document.getElementById('result').innerHTML = `🎊 Поздравляем! 🎊<br>Твой приз: <b>${data.label}</b>`;
                 document.getElementById('ui-block').style.display = 'none';
+                startConfetti(); // Запускаем конфетти при выигрыше
                 if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             }, 4200);
 
