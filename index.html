@@ -6,20 +6,28 @@
     <title>Wheel of Fortune</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .wheel-box { position: relative; width: 320px; height: 320px; margin-bottom: 30px; }
-        canvas { width: 100%; height: 100%; border-radius: 50%; border: 4px solid #333; }
-        .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px; background: #ff4757; clip-path: polygon(50% 100%, 0 0, 100% 0); z-index: 10; }
-        .ui { width: 85%; max-width: 300px; display: flex; flex-direction: column; gap: 12px; }
-        input { padding: 14px; border-radius: 10px; border: 1px solid #333; background: #1e1e1e; color: #fff; font-size: 16px; text-align: center; }
-        button { padding: 14px; border-radius: 10px; border: none; background: #f1c40f; color: #000; font-weight: bold; font-size: 16px; cursor: pointer; }
-        button:disabled { opacity: 0.6; }
-        #res { margin-top: 20px; font-weight: bold; color: #f1c40f; text-align: center; }
+        :root { --accent: #f1c40f; --bg: #121212; --card: #1e1e1e; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
         
-        /* Анимация вращения через JS для контроля скорости */
+        .wheel-box { position: relative; width: 320px; height: 320px; margin-bottom: 40px; }
+        canvas { width: 100%; height: 100%; border-radius: 50%; border: 6px solid #2c2c2c; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0s; }
+        .pointer { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); width: 36px; height: 42px; background: #e74c3c; clip-path: polygon(50% 100%, 0 0, 100% 0); z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        
+        .ui { width: 85%; max-width: 320px; display: flex; flex-direction: column; gap: 14px; z-index: 5; }
+        input { padding: 16px; border-radius: 12px; border: 1px solid #333; background: var(--card); color: #fff; font-size: 18px; text-align: center; outline: none; }
+        input:focus { border-color: var(--accent); }
+        
+        button { padding: 16px; border-radius: 12px; border: none; background: var(--accent); color: #000; font-weight: 800; font-size: 16px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: transform 0.1s; }
+        button:active { transform: scale(0.96); }
+        button:disabled { opacity: 0.5; filter: grayscale(1); }
+        
+        #res { margin-top: 25px; font-size: 20px; font-weight: bold; color: var(--accent); text-align: center; line-height: 1.4; padding: 0 20px; }
+        .loader { font-size: 14px; color: #666; margin-bottom: 10px; }
     </style>
 </head>
 <body>
+
+<div id="loader" class="loader">Загрузка призов...</div>
 
 <div class="wheel-box">
     <div class="pointer"></div>
@@ -27,129 +35,141 @@
 </div>
 
 <div class="ui" id="ui-block">
-    <input type="tel" id="phone" placeholder="+7 (___) ___-__-__">
-    <button id="spin-btn">ИСПЫТАТЬ УДАЧУ</button>
+    <input type="tel" id="phone" placeholder="+7 (999) 000-00-00">
+    <button id="spin-btn" disabled>Загрузка...</button>
 </div>
 <div id="res"></div>
 
 <script>
+    // --- ЗАМЕНИТЕ ЭТУ ССЫЛКУ ---
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw8vvM5f1GddHUIxLtAf90fUoZbUpGtx76aoJcc8L3DfHKUK6KVopVLp7tI6e4WQ5c/exec";
-// 1. Дефолтные призы (пока грузятся основные)
-let prizes = [
-    { label: "Загрузка...", weight: 1, color: "#333" },
-    { label: "...", weight: 1, color: "#444" },
-    { label: "Загрузка...", weight: 1, color: "#333" },
-    { label: "...", weight: 1, color: "#444" }
-];
-let currentRotation = 0;
 
-const canvas = document.getElementById('wheel');
-const ctx = canvas.getContext('2d');
-const spinBtn = document.getElementById('spin-btn');
+    const tg = window.Telegram.WebApp;
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spin-btn');
+    const resDiv = document.getElementById('res');
+    const phoneInput = document.getElementById('phone');
 
-// Рисуем сразу при загрузке страницы
-window.onload = () => {
-    drawWheel(); // Нарисует серые сектора "Загрузка"
-    loadActualPrizes(); // Начнет качать реальные данные
-};
+    let prizes = [];
+    let currentRotation = 0;
+    let isSpinning = false;
 
-async function loadActualPrizes() {
-    try {
-        const resp = await fetch(GAS_URL);
-        const data = await resp.json();
-        if (data.length > 0) {
-            prizes = data;
-            drawWheel(); // Перерисует колесо в нормальные цвета
+    tg.ready();
+    tg.expand();
+
+    // 1. Загрузка призов из Таблицы
+    async function init() {
+        try {
+            const resp = await fetch(GAS_URL);
+            prizes = await resp.json();
+            if (prizes.error) throw new Error(prizes.error);
+            
+            drawWheel();
+            document.getElementById('loader').style.display = 'none';
+            spinBtn.disabled = false;
+            spinBtn.innerText = "ИСПЫТАТЬ УДАЧУ";
+        } catch (e) {
+            console.error(e);
+            resDiv.innerText = "Ошибка загрузки призов. Проверьте таблицу.";
         }
-    } catch (e) {
-        console.error("Не удалось подгрузить призы, используем дефолт");
     }
-}
 
-function drawWheel() {
-    const slice = 360 / prizes.length;
-    ctx.clearRect(0,0,600,600);
-    prizes.forEach((p, i) => {
-        ctx.beginPath();
-        ctx.fillStyle = p.color;
-        ctx.moveTo(300, 300);
-        ctx.arc(300, 300, 300, (i * slice) * Math.PI/180, ((i+1) * slice) * Math.PI/180);
-        ctx.fill();
-        ctx.save();
-        ctx.translate(300, 300);
-        ctx.rotate((i * slice + slice/2) * Math.PI/180);
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 24px Arial";
-        ctx.textAlign = "right";
-        ctx.fillText(p.label, 280, 10);
-        ctx.restore();
-    });
-}
-
-spinBtn.onclick = async () => {
-    const rawPhone = document.getElementById('phone').value;
-    if (rawPhone.replace(/\D/g, '').length < 10) return alert("Введите корректный номер");
-
-    spinBtn.disabled = true;
-
-    // МГНОВЕННО запускаем медленное вращение (для фидбека)
-    let preRollAngle = currentRotation;
-    const preRoll = setInterval(() => {
-        preRollAngle += 2;
-        canvas.style.transform = `rotate(${preRollAngle}deg)`;
-        currentRotation = preRollAngle;
-    }, 16);
-
-    try {
-        const tgData = window.Telegram.WebApp.initDataUnsafe;
-        const resp = await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ 
-                phone: rawPhone, 
-                chat_id: tgData.user?.id || null 
-            })
-        });
-        const result = await resp.json();
-
-        clearInterval(preRoll); // Останавливаем "ожидающее" вращение
-
-        if (result.error === "already_played") {
-            alert("Вы уже участвовали!");
-            spinBtn.disabled = false;
-            return;
-        }
-        
-        if (result.error) {
-            alert("Ошибка: " + result.error);
-            spinBtn.disabled = false;
-            return;
-        }
-
-        // РАСЧЕТ ФИНАЛЬНОЙ ТОЧКИ (4 полных круга + нужный сектор)
+    function drawWheel() {
         const slice = 360 / prizes.length;
-        const extraSpins = 360 * 4;
-        const stopAt = (360 - (result.index * slice)) - (slice / 2) + 270;
-        const finalTarget = currentRotation + extraSpins + (stopAt - (currentRotation % 360));
-
-        // Плавная анимация через CSS
-        canvas.style.transition = "transform 4s cubic-bezier(0.15, 0, 0.15, 1)";
-        canvas.style.transform = `rotate(${finalTarget}deg)`;
-        currentRotation = finalTarget;
-
-        setTimeout(() => {
-            document.getElementById('res').innerHTML = `<b>УРА! ВАШ ПРИЗ:</b><br>${result.label}`;
-            document.getElementById('ui-block').style.display = 'none';
-            if (window.Telegram.WebApp.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-            }
-        }, 4500);
-
-    } catch (e) {
-        clearInterval(preRoll);
-        alert("Ошибка сервера. Проверьте соединение.");
-        spinBtn.disabled = false;
+        ctx.clearRect(0,0,600,600);
+        prizes.forEach((p, i) => {
+            const angle = (i * slice) * Math.PI / 180;
+            ctx.beginPath();
+            ctx.fillStyle = p.color || "#333";
+            ctx.moveTo(300, 300);
+            ctx.arc(300, 300, 300, angle, angle + (slice * Math.PI / 180));
+            ctx.fill();
+            
+            ctx.save();
+            ctx.translate(300, 300);
+            ctx.rotate(angle + (slice/2) * Math.PI / 180);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 24px sans-serif";
+            ctx.textAlign = "right";
+            ctx.fillText(p.label, 280, 10);
+            ctx.restore();
+        });
     }
-};
+
+    spinBtn.onclick = async () => {
+        const phone = phoneInput.value.replace(/\D/g, '');
+        if (phone.length < 10) {
+            tg.showAlert("Введите корректный номер телефона");
+            return;
+        }
+
+        spinBtn.disabled = true;
+        isSpinning = true;
+
+        // ЭФФЕКТ МГНОВЕННОГО ОТКЛИКА: медленное вращение в ожидании сервера
+        let preRollAngle = currentRotation;
+        const preRoll = setInterval(() => {
+            preRollAngle += 3;
+            canvas.style.transform = `rotate(${preRollAngle}deg)`;
+            currentRotation = preRollAngle;
+        }, 16);
+
+        try {
+            const resp = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ 
+                    phone: phone, 
+                    chat_id: tg.initDataUnsafe?.user?.id || null 
+                })
+            });
+            const data = await resp.json();
+            
+            clearInterval(preRoll); // Останавливаем ожидание
+
+            if (data.error) {
+                if (data.error === "already_played") {
+                    tg.showAlert("Вы уже участвовали в этой акции!");
+                } else if (data.error === "server_crash") {
+                    tg.showAlert("Ошибка сервера: " + data.details);
+                } else {
+                    tg.showAlert("Ошибка: " + data.error);
+                }
+                spinBtn.disabled = false;
+                isSpinning = false;
+                return;
+            }
+
+            // РАСЧЕТ ФИНАЛЬНОГО ВРАЩЕНИЯ
+            const slice = 360 / prizes.length;
+            const extraSpins = 360 * 5; // 5 полных оборотов
+            // Корректировка: указатель сверху (270 град), вычитаем текущий остаток вращения
+            const stopAt = (360 - (data.index * slice)) - (slice / 2) + 270;
+            const finalTarget = currentRotation + extraSpins + (stopAt - (currentRotation % 360));
+
+            // Запускаем основную анимацию через CSS
+            canvas.style.transition = "transform 4s cubic-bezier(0.15, 0, 0.15, 1)";
+            canvas.style.transform = `rotate(${finalTarget}deg)`;
+            currentRotation = finalTarget;
+
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
+            setTimeout(() => {
+                resDiv.innerHTML = `🎊 ПОЗДРАВЛЯЕМ! 🎊<br>Ваш приз: <b>${data.label}</b>`;
+                document.getElementById('ui-block').style.display = 'none';
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            }, 4500);
+
+        } catch (e) {
+            clearInterval(preRoll);
+            tg.showAlert("Сбой сети. Попробуйте еще раз.");
+            spinBtn.disabled = false;
+            isSpinning = false;
+        }
+    };
+
+    init();
 </script>
+
 </body>
 </html>
