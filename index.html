@@ -68,6 +68,27 @@
             z-index: 1;
         }
 
+        /* ОБНОВЛЕННЫЙ ДЕКОР ИЗ PNG ФАЙЛОВ */
+        .decor { 
+            position: fixed; 
+            pointer-events: none; 
+            z-index: 0; 
+        }
+        .decor-brunch { 
+            bottom: -20px; 
+            left: -30px; 
+            width: 200px; 
+            transform: rotate(-10deg); 
+            opacity: 0.9; 
+        }
+        .decor-dust { 
+            top: -20px; 
+            right: -40px; 
+            width: 280px; 
+            opacity: 0.8; 
+        }
+
+        
         .logo { 
             width: 80px; 
             height: auto; 
@@ -183,6 +204,9 @@
 </head>
 <body>
 
+<img src="brunch.png" class="decor decor-brunch">
+<img src="dust.png" class="decor decor-dust">
+    
 <div id="loading-screen">
     <img src="logo_b.png" class="loader-logo" alt="Загрузка...">
     <p style="font-family: 'Cormorant Garamond'; color: var(--primary-dark); margin-top: 20px; font-size: 18px;">Загружаем весеннее настроение...</p>
