@@ -137,15 +137,19 @@
 
         .pointer {
             position: absolute;
-            top: -12px;
+            top: -15px;
             left: 50%;
             transform: translateX(-50%);
-            width: 32px;
-            height: 42px;
-            background: var(--primary-dark);
+            width: 35px;
+            height: 45px;
+            /* Золотой цвет для максимального контраста */
+            background: #d4af37; 
             clip-path: polygon(50% 100%, 0 0, 100% 0);
             z-index: 10;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            /* Добавляем тень, чтобы стрелка "приподнялась" над колесом */
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            /* Тонкая белая линия сверху, чтобы отделить от фона */
+            border-top: 1px solid rgba(255,255,255,0.5);
         }
 
         /* Форма */
