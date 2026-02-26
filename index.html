@@ -42,6 +42,60 @@
     const spinBtn = document.getElementById('spin-btn');
     const resDiv = document.getElementById('res');
 
+// 1. Инициализация Telegram
+const tg = window.Telegram.WebApp;
+tg.ready(); // Сообщаем ТГ, что приложение готово
+tg.expand(); // Разворачиваем на весь экран
+
+spinBtn.onclick = async () => {
+    // Чистим телефон
+    let phone = document.getElementById('phone').value.replace(/\D/g, '');
+    if (phone.startsWith('8')) phone = '7' + phone.slice(1);
+    
+    if (phone.length < 10) {
+        alert("Введите корректный номер");
+        return;
+    }
+
+    spinBtn.disabled = true;
+
+    // Получаем ID (на ПК он может быть в разных местах объекта)
+    const tgUserId = tg.initDataUnsafe?.user?.id || null;
+
+    try {
+        const resp = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+                phone: phone, 
+                chat_id: tgUserId 
+            })
+        });
+        
+        const data = await resp.json();
+
+        if (data.error === "already_played") {
+            alert("Вы уже участвовали! Попытка засчитана по номеру телефона или аккаунту.");
+            spinBtn.disabled = false;
+            return;
+        }
+
+        // Запуск анимации
+        const slice = 360 / 5; // количество призов
+        const rotation = 2160 + (360 - (data.index * slice)) - (slice / 2) + 270;
+        canvas.style.transform = `rotate(${rotation}deg)`;
+
+        setTimeout(() => {
+            document.getElementById('res').innerHTML = `ВЫИГРЫШ: ${data.label}`;
+            document.getElementById('ui-block').style.display = 'none';
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }, 5500);
+
+    } catch (e) {
+        alert("Ошибка сети. Попробуйте снова.");
+        spinBtn.disabled = false;
+    }
+};
+    
     function drawWheel() {
         const slice = 360 / prizes.length;
         prizes.forEach((p, i) => {
