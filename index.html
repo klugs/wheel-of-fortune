@@ -296,55 +296,72 @@
     }
 
     spinBtn.onclick = async () => {
-        let phoneInput = document.getElementById('phone').value.replace(/\D/g, '');
-        if (phoneInput.length < 10) return alert("Введите корректный номер телефона.");
+    let phoneInput = document.getElementById('phone').value.replace(/\D/g, '');
+    if (phoneInput.length < 10) return alert("Введите корректный номер телефона.");
 
-        spinBtn.disabled = true;
+    spinBtn.disabled = true;
 
-        // МГНОВЕННОЕ начало вращения (эффект разгона)
-        let preRollSpeed = 2;
-        const interval = setInterval(() => {
-            currentRotation += preRollSpeed;
-            if (preRollSpeed < 12) preRollSpeed += 0.2; 
-            canvas.style.transform = `rotate(${currentRotation}deg)`;
-        }, 16);
+    // Получаем имя пользователя из Telegram
+    const user = tg.initDataUnsafe?.user;
+    const firstName = user?.first_name || "Гость";
 
-        try {
-            const resp = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ phone: phoneInput, chat_id: tg.initDataUnsafe?.user?.id || null })
-            });
-            const data = await resp.json();
-            clearInterval(interval);
+    // Анимация ожидания (оставляем вашу логику)
+    let preRollSpeed = 2;
+    const interval = setInterval(() => {
+        currentRotation += preRollSpeed;
+        if (preRollSpeed < 12) preRollSpeed += 0.2; 
+        canvas.style.transform = `rotate(${currentRotation}deg)`;
+    }, 16);
 
-            if (data.error) {
-                alert(data.error === "already_played" ? "Вы уже участвовали в акции!" : "Произошла ошибка.");
-                spinBtn.disabled = false;
-                return;
-            }
+    try {
+        const resp = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+                phone: phoneInput, 
+                chat_id: user?.id || null,
+                user_name: firstName // Передаем имя на сервер
+            })
+        });
+        const data = await resp.json();
+        clearInterval(interval);
 
-            const slice = 360 / prizes.length;
-            const extra = 360 * 5;
-            const stopAt = (360 - (data.index * slice)) - (slice / 2) + 270;
-            const final = currentRotation + extra + (stopAt - (currentRotation % 360));
-
-            canvas.style.transition = "transform 4s cubic-bezier(0.1, 0, 0.1, 1)";
-            canvas.style.transform = `rotate(${final}deg)`;
-            currentRotation = final;
-
-            setTimeout(() => {
-                document.getElementById('result').innerHTML = `🎊 Поздравляем! 🎊<br>Твой приз: <b>${data.label}</b>`;
-                document.getElementById('ui-block').style.display = 'none';
-                startConfetti(); // Запускаем конфетти при выигрыше
-                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-            }, 4200);
-
-        } catch (e) {
-            clearInterval(interval);
-            alert("Сбой связи. Попробуйте еще раз.");
+        if (data.error) {
+            alert(data.error === "already_played" ? "Вы уже участвовали в акции!" : "Ошибка сервера");
             spinBtn.disabled = false;
+            return;
         }
-    };
+
+        // Логика финального вращения (оставляем вашу)
+        const slice = 360 / prizes.length;
+        const extra = 360 * 5;
+        const stopAt = (360 - (data.index * slice)) - (slice / 2) + 270;
+        const final = currentRotation + extra + (stopAt - (currentRotation % 360));
+
+        canvas.style.transition = "transform 4s cubic-bezier(0.1, 0, 0.1, 1)";
+        canvas.style.transform = `rotate(${final}deg)`;
+        currentRotation = final;
+
+        setTimeout(() => {
+            // ОБНОВЛЕННЫЙ ТЕКСТ ПОСЛЕ ВЫИГРЫША
+            document.getElementById('result').innerHTML = `
+                🎊 Поздравляем, ${firstName}! 🎊<br>
+                Твой приз: <b>${data.label}</b><br>
+                <span style="font-size: 14px; color: var(--accent); display: block; margin-top: 10px;">
+                    Инструкции, как забрать приз, уже отправлены ботом @MechtaBeautyMsk_bot
+                </span>
+            `;
+            document.getElementById('ui-block').style.display = 'none';
+            
+            if (typeof startConfetti === 'function') startConfetti();
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        }, 4200);
+
+    } catch (e) {
+        clearInterval(interval);
+        alert("Сбой связи.");
+        spinBtn.disabled = false;
+    }
+};
 
     loadData();
 </script>
