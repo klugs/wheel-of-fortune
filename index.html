@@ -239,7 +239,7 @@
 <div id="result"></div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzabFuZk0FrYCoA3jyICWsa8TogBgprifo3p2fmd3b_211QzGAQ3SJ2q582jJA6jOI/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzKjD3EU8ry3xDkiIdHJ2V0rvmnQ6jvG32Tjk100DGgv8vqn2dBvAVaIWvEcY7AuRo/exec";
     const tg = window.Telegram.WebApp;
     
     // Заглушки, чтобы колесо нарисовалось мгновенно
@@ -337,7 +337,8 @@
     // Получаем имя пользователя из Telegram
     const user = tg.initDataUnsafe?.user;
     const firstName = user?.first_name || "Гость";
-
+    const username = user?.username || ""; // Получаем никнейм без @
+            
     // Анимация ожидания (оставляем вашу логику)
     let preRollSpeed = 2;
     const interval = setInterval(() => {
@@ -352,7 +353,8 @@
             body: JSON.stringify({ 
                 phone: phoneInput, 
                 chat_id: user?.id || null,
-                user_name: firstName // Передаем имя на сервер
+                user_name: firstName, // Передаем имя на сервер
+                user_handle: username // ПЕРЕДАЕМ НИКНЕЙМ
             })
         });
         const data = await resp.json();
